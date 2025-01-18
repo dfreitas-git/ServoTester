@@ -17,8 +17,8 @@ enum servoMode { POT, SWP };  // Either controlled with a potentiometer (POT) or
 enum rotary { LINE, MODE, CURA, MINA, MAXA };  // What the rotary knob is controlling
 
 // Constants
-#define OLED_REFRESH_TIME  100   // Time between OLED screen updates
-#define SWEEP_REFRESH_TIME 25    // Time between servo sweep steps
+#define OLED_REFRESH_TIME  100   // Time (ms) between OLED screen updates
+#define SERVO_MOVE_TIME    500   // Time (ms) between servo sweep steps
 boolean PRESSED = false;
 
 // U8G2 for PCD8544 with software SPI
@@ -36,13 +36,13 @@ boolean buttonBeingHeld = false;  // Used to test if rotary button is being held
 #define PIN_IN1 2               // Interrupt pin
 #define PIN_IN2 3               // Interrupt pin
 #define ENC_SW  A1              // Rotary control switch
-rotary rotaryControl;           // Tells us what the rotary know is currently being used for changing
+rotary rotaryControl;           // Tells us what the rotary knob is currently being used for changing
 int encoderCurPosition = 0;
 
 // Servos
 #define NUM_SERVOS 4
 int servoPinArr[NUM_SERVOS] = {10,9,6,5};
-int servoCurAngleArr[NUM_SERVOS] = {0,0,0,0};
+int servoCurAngleArr[NUM_SERVOS] = {90,90,90,90};
 int servoMinAngleArr[NUM_SERVOS] = {0,0,0,0};
 int servoMaxAngleArr[NUM_SERVOS] = {180,180,180,180};
 servoMode servoModeArr[NUM_SERVOS] = {POT,POT,POT,POT};  // modes are POT or SWP  (potentiometer or sweep)
@@ -89,12 +89,12 @@ void setup() {
    pinMode(ENC_SW, INPUT_PULLUP);
 
    // use TWO03 mode when PIN_IN1, PIN_IN2 signals are both LOW or HIGH in latch position.
-  encoder = new RotaryEncoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::TWO03);
-  encoder->setPosition(0);
+   encoder = new RotaryEncoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::TWO03);
+   encoder->setPosition(0);
 
-  // register interrupt routine
-  attachInterrupt(digitalPinToInterrupt(PIN_IN1), checkPosition, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(PIN_IN2), checkPosition, CHANGE);
+   // register interrupt routine
+   attachInterrupt(digitalPinToInterrupt(PIN_IN1), checkPosition, CHANGE);
+   attachInterrupt(digitalPinToInterrupt(PIN_IN2), checkPosition, CHANGE);
 
 }
 
@@ -109,89 +109,89 @@ void loop() {
 
    encoderCurPosition = encoder->getPosition();
 
-  // Limit the encoder count range depending on which menu we are in (different menus have different number of rows)
-  if(menuLevel == 0) {
-     encoderCurPosition = getEncoderPosition(encoderCurPosition, 0, NUM_LEVEL0_ITEMS-1);
-     level0SelectRow = encoderCurPosition;
-  } else if(menuLevel == 1 && rotaryControl == LINE) {
-     encoderCurPosition = getEncoderPosition(encoderCurPosition, 0, NUM_LEVEL1_ITEMS-1);
-     level1SelectRow = encoderCurPosition;
-  } else if(menuLevel == 1 && rotaryControl == MODE) {
-     encoderCurPosition = getEncoderPosition(encoderCurPosition, 0, 1);
-     if(encoderCurPosition == 0) {
-        servoModeArr[level0SelectRow] = POT;
-     } else {
-        servoModeArr[level0SelectRow] = SWP;
-     }
-  } else if(menuLevel == 1 && rotaryControl == CURA) {
-     encoderCurPosition = getEncoderPosition(encoderCurPosition, servoMinAngleArr[level0SelectRow], servoMaxAngleArr[level0SelectRow]);
-     servoCurAngleArr[level0SelectRow] = encoderCurPosition;
-  } else if(menuLevel == 1 && rotaryControl == MINA) {
-     //encoderCurPosition = getEncoderPosition(encoderCurPosition, servoMinAngleArr[level0SelectRow], servoMaxAngleArr[level0SelectRow]);
-     encoderCurPosition = getEncoderPosition(encoderCurPosition, -20, 200 );
-     servoMinAngleArr[level0SelectRow] = encoderCurPosition;
-  } else if(menuLevel == 1 && rotaryControl == MAXA) {
-     //encoderCurPosition = getEncoderPosition(encoderCurPosition, servoMinAngleArr[level0SelectRow], servoMaxAngleArr[level0SelectRow]);
-     encoderCurPosition = getEncoderPosition(encoderCurPosition, -20, 200 );
-     servoMaxAngleArr[level0SelectRow] = encoderCurPosition;
-  }
-  setEncoderPosition(encoderCurPosition);
+   // Limit the encoder count range depending on which menu we are in (different menus have different number of rows)
+   if(menuLevel == 0) {
+      encoderCurPosition = getEncoderPosition(encoderCurPosition, 0, NUM_LEVEL0_ITEMS-1);
+      level0SelectRow = encoderCurPosition;
+   } else if(menuLevel == 1 && rotaryControl == LINE) {
+      encoderCurPosition = getEncoderPosition(encoderCurPosition, 0, NUM_LEVEL1_ITEMS-1);
+      level1SelectRow = encoderCurPosition;
+   } else if(menuLevel == 1 && rotaryControl == MODE) {
+      encoderCurPosition = getEncoderPosition(encoderCurPosition, 0, 1);
+      if(encoderCurPosition == 0) {
+         servoModeArr[level0SelectRow] = POT;
+      } else {
+         servoModeArr[level0SelectRow] = SWP;
+      }
+   } else if(menuLevel == 1 && rotaryControl == CURA) {
+      encoderCurPosition = getEncoderPosition(encoderCurPosition, servoMinAngleArr[level0SelectRow], servoMaxAngleArr[level0SelectRow]);
+      servoCurAngleArr[level0SelectRow] = encoderCurPosition;
+   } else if(menuLevel == 1 && rotaryControl == MINA) {
+      //encoderCurPosition = getEncoderPosition(encoderCurPosition, servoMinAngleArr[level0SelectRow], servoMaxAngleArr[level0SelectRow]);
+      encoderCurPosition = getEncoderPosition(encoderCurPosition, -20, 200 );
+      servoMinAngleArr[level0SelectRow] = encoderCurPosition;
+   } else if(menuLevel == 1 && rotaryControl == MAXA) {
+      //encoderCurPosition = getEncoderPosition(encoderCurPosition, servoMinAngleArr[level0SelectRow], servoMaxAngleArr[level0SelectRow]);
+      encoderCurPosition = getEncoderPosition(encoderCurPosition, -20, 200 );
+      servoMaxAngleArr[level0SelectRow] = encoderCurPosition;
+   }
+   setEncoderPosition(encoderCurPosition);
 
-  // ##########################################
-  // See if the encoder switch is being pressed
-  // ##########################################
-  if(checkSwitch(ENC_SW) == PRESSED) {
-     // Wait for the switch to be released before going on
-     while(checkSwitch(ENC_SW) == PRESSED) {
-        delay(1);
-     }
-     if(menuLevel == 0) {
-        level0SelectRow = encoderCurPosition;
-        level1SelectRow = 0;
-        setEncoderPosition(level1SelectRow);
-        menuLevel = 1;
-        rotaryControl = LINE;
-
-     } else if(menuLevel == 1 && level1SelectRow == 0 && !editing) {   // This is the "mode" line
-        rotaryControl = MODE;
-        editing = true;
-     } else if(menuLevel == 1 && level1SelectRow == 0 && editing) {   // This is how we exit editing
-        rotaryControl = LINE;
-        setEncoderPosition(level1SelectRow);
-        editing = false;
-
-     } else if(menuLevel == 1 && level1SelectRow == 1 && !editing) {   // This is the "current servo angle" (curA) line
-        rotaryControl = CURA;
-        setEncoderPosition(servoCurAngleArr[level0SelectRow]);
-        editing = true;
-     } else if(menuLevel == 1 && level1SelectRow == 1 && editing) {   // This is how we exit editing
-        rotaryControl = LINE;
-        setEncoderPosition(level1SelectRow);
-        editing = false;
-
-     } else if(menuLevel == 1 && level1SelectRow == 2 && !editing) {   // This is the "minimum servo angle" (minA) line
-        rotaryControl = MINA;
-        setEncoderPosition(servoMinAngleArr[level0SelectRow]);
-        editing = true;
-     } else if(menuLevel == 1 && level1SelectRow == 2 && editing) {   // This is how we exit editing
-        rotaryControl = LINE;
-        setEncoderPosition(level1SelectRow);
-        editing = false;
-
-     } else if(menuLevel == 1 && level1SelectRow == 3 && !editing) {   // This is the "maximum servo angle" (maxA) line
-        rotaryControl = MAXA;
-        setEncoderPosition(servoMaxAngleArr[level0SelectRow]);
-        editing = true;
-     } else if(menuLevel == 1 && level1SelectRow == 3 && editing) {   // This is how we exit editing
-        rotaryControl = LINE;
-        setEncoderPosition(level1SelectRow);
-        editing = false;
-
-     } else if(menuLevel == 1 && level1SelectRow == 4) {   // This is the "back" button
-        menuLevel=0;
-        setEncoderPosition(level0SelectRow);
-     }
-  }
+   // ##########################################
+   // See if the encoder switch is being pressed
+   // ##########################################
+   if(checkSwitch(ENC_SW) == PRESSED) {
+      // Wait for the switch to be released before going on
+      while(checkSwitch(ENC_SW) == PRESSED) {
+         delay(1);
+      }
+      if(menuLevel == 0) {
+         level0SelectRow = encoderCurPosition;
+         level1SelectRow = 0;
+         setEncoderPosition(level1SelectRow);
+         menuLevel = 1;
+         rotaryControl = LINE;
+ 
+      } else if(menuLevel == 1 && level1SelectRow == 0 && !editing) {   // This is the "mode" line
+         rotaryControl = MODE;
+         editing = true;
+      } else if(menuLevel == 1 && level1SelectRow == 0 && editing) {   // This is how we exit editing
+         rotaryControl = LINE;
+         setEncoderPosition(level1SelectRow);
+         editing = false;
+ 
+      } else if(menuLevel == 1 && level1SelectRow == 1 && !editing) {   // This is the "current servo angle" (curA) line
+         rotaryControl = CURA;
+         setEncoderPosition(servoCurAngleArr[level0SelectRow]);
+         editing = true;
+      } else if(menuLevel == 1 && level1SelectRow == 1 && editing) {   // This is how we exit editing
+         rotaryControl = LINE;
+         setEncoderPosition(level1SelectRow);
+         editing = false;
+ 
+      } else if(menuLevel == 1 && level1SelectRow == 2 && !editing) {   // This is the "minimum servo angle" (minA) line
+         rotaryControl = MINA;
+         setEncoderPosition(servoMinAngleArr[level0SelectRow]);
+         editing = true;
+      } else if(menuLevel == 1 && level1SelectRow == 2 && editing) {   // This is how we exit editing
+         rotaryControl = LINE;
+         setEncoderPosition(level1SelectRow);
+         editing = false;
+ 
+      } else if(menuLevel == 1 && level1SelectRow == 3 && !editing) {   // This is the "maximum servo angle" (maxA) line
+         rotaryControl = MAXA;
+         setEncoderPosition(servoMaxAngleArr[level0SelectRow]);
+         editing = true;
+      } else if(menuLevel == 1 && level1SelectRow == 3 && editing) {   // This is how we exit editing
+         rotaryControl = LINE;
+         setEncoderPosition(level1SelectRow);
+         editing = false;
+ 
+      } else if(menuLevel == 1 && level1SelectRow == 4) {   // This is the "back" button
+         menuLevel=0;
+         setEncoderPosition(level0SelectRow);
+      }
+   }
 
    // ####################
    // Update the display
@@ -268,45 +268,42 @@ void loop() {
       }
    }
 
-/*
-  if(position != newPosition) {
-    position = newPosition;
-    for(int i = 0; i < NUM_SERVOS; i++) {
-       if(servoModeArr[i] == POT) {
-          servoInstance[i].write(encoderCurPosition);    // sets the servo position 
-          servoCurAngleArr[i] = encoderCurPosition;         // store the position to report later
-       }
-    }
-    delay(20);  // Wait for servo to get there
-  } 
-*/
+   // Now go move the servo(s)
+   for(int i = 0; i < NUM_SERVOS; i++) {
+      if(servoModeArr[i] == POT) {
+         servoInstance[i].write(servoCurAngleArr[i]);    // sets the servo position 
+      }
+   }
 
-/*
-   if(millis() - lastSweepUpdate > SWEEP_REFRESH_TIME) {
+   // For any servos being automatically swept
+   if(millis() - lastSweepUpdate > SERVO_MOVE_TIME) {
       lastSweepUpdate = millis();
-      if(!sweepAngleRising && sweepAngle <= 0) {
-         sweepAngleRising = true;
-         sweepAngle = 0;
-      }
-      if(sweepAngleRising && sweepAngle >= 180) {
-         sweepAngleRising = false;
-         sweepAngle = 180;
-      }
-      if(sweepAngleRising && sweepAngle < 180) {
-         sweepAngle += sweepDelta;
-      }
-      if(!sweepAngleRising && sweepAngle > 0) {
-         sweepAngle -= sweepDelta;
-      }
       for(int i = 0; i < NUM_SERVOS; i++) {
+         if(!sweepAngleRising && sweepAngle <= servoMinAngleArr[i]) {
+            sweepAngleRising = true;
+            sweepAngle = servoMinAngleArr[i];
+         }
+         if(sweepAngleRising && sweepAngle >= servoMaxAngleArr[i]) {
+            sweepAngleRising = false;
+            sweepAngle = servoMaxAngleArr[i];
+         }
+         if(sweepAngleRising && sweepAngle < servoMaxAngleArr[i]) {
+            sweepAngle += sweepDelta;
+         }
+         if(!sweepAngleRising && sweepAngle > servoMinAngleArr[i]) {
+            sweepAngle -= sweepDelta;
+         }
          if(servoModeArr[i] == SWP) {
             servoInstance[i].write(sweepAngle);        // move the servo to the new position
             servoCurAngleArr[i] = sweepAngle;
          }
       }
    }
-*/
-}
+} 
+
+// ########################################
+// Functions
+// ########################################
 
 // This interrupt routine will be called on any change of one of the input signals
 void checkPosition() {
