@@ -40,19 +40,19 @@ rotary rotaryControl;           // Tells us what the rotary knob is currently be
 int encoderCurPosition = 0;
 
 // Servos
-#define NUM_SERVOS 4
-int servoPinArr[NUM_SERVOS] = {10,9,6,5};
-int servoCurAngleArr[NUM_SERVOS] = {90,90,90,90};
-int servoMinAngleArr[NUM_SERVOS] = {0,0,0,0};
-int servoMaxAngleArr[NUM_SERVOS] = {180,180,180,180};
-servoMode servoModeArr[NUM_SERVOS] = {POT,POT,POT,POT};  // modes are POT or SWP  (potentiometer or sweep)
-Servo servoInstance[NUM_SERVOS]; // Create the servo objects.
+#define NUM_SERVOS 5
+int servoPinArr[NUM_SERVOS] = {10,9,6,5,-1};
+int servoCurAngleArr[NUM_SERVOS] = {90,90,90,90,90};
+int servoMinAngleArr[NUM_SERVOS] = {0,0,0,0,-20};
+int servoMaxAngleArr[NUM_SERVOS] = {180,180,180,180,200};
+servoMode servoModeArr[NUM_SERVOS] = {POT,POT,POT,POT,POT};  // modes are POT or SWP  (potentiometer or sweep)
+Servo servoInstance[NUM_SERVOS-1]; // Create the servo objects for the actual servos (servo5 means ALL servos).
 
 // Menu Vars
 uint8_t menuLevel = 0;
 uint8_t level0SelectRow = 0;
 uint8_t level1SelectRow = 0;
-uint8_t NUM_LEVEL0_ITEMS = 4;
+uint8_t NUM_LEVEL0_ITEMS = 5;
 uint8_t NUM_LEVEL1_ITEMS = 5;
 boolean editing = false;   // Set true when editing data in a menu row
 
@@ -77,7 +77,7 @@ void setup() {
    while(!Serial) { }
    delay(1000);
 
-   for(int i = 0; i < NUM_SERVOS; i++) {
+   for(int i = 0; i < NUM_SERVOS-1; i++) {
       servoInstance[i].attach(servoPinArr[i]);  
    }
 
@@ -203,7 +203,6 @@ void loop() {
          u8x8.clearDisplay();
          u8x8.setFont(u8x8_font_pxplustandynewtv_r); 
          u8x8.drawString(0,0, "Sv Mod Ang");  // Servo Mode Angle
-         u8x8.drawString(0,1, "----------");
          for(int i = 0; i < NUM_SERVOS; i++) {
             if(servoModeArr[i] == POT) { strcpy(modeStr, "POT"); }
             if(servoModeArr[i] == SWP) { strcpy(modeStr, "SWP"); }
@@ -212,15 +211,23 @@ void loop() {
             } else {
                strcpy(selChar," ");
             }
-            sprintf(str,"%s%d %s %d", selChar,i, modeStr, servoCurAngleArr[i]);
-            u8x8.drawString(0,i+2,str);
+            if(i == 4) {
+               sprintf(str,"%sA %s %d", selChar, modeStr, servoCurAngleArr[i]);
+            } else {
+               sprintf(str,"%s%d %s %d", selChar,i, modeStr, servoCurAngleArr[i]);
+            }
+            u8x8.drawString(0,i+1,str);
          }
       }
       if(menuLevel == 1) {
          // Menu Header
          u8x8.clearDisplay();
          u8x8.setFont(u8x8_font_pxplustandynewtv_r); 
-         sprintf(str," Servo %d", level0SelectRow);
+         if(level0SelectRow == 4) {
+            strcpy(str,"All Servos");
+         } else {
+            sprintf(str," Servo %d", level0SelectRow);
+         }
          u8x8.drawString(0,0,str);
 
          // Mode line
@@ -269,33 +276,49 @@ void loop() {
    }
 
    // Now go move the servo(s)
-   for(int i = 0; i < NUM_SERVOS; i++) {
-      if(servoModeArr[i] == POT) {
-         servoInstance[i].write(servoCurAngleArr[i]);    // sets the servo position 
+   for(int i = 0; i < NUM_SERVOS-1; i++) {
+      if(level0SelectRow == 4) {
+         if(servoModeArr[4] == POT) {   // row 4 means all servos driven with the "servo4" settings
+            servoInstance[i].write(servoCurAngleArr[4]);        // sets the servo position 
+         }
+      } else {
+         if(servoModeArr[i] == POT) {
+            servoInstance[i].write(servoCurAngleArr[i]);    // sets the servo position 
+         }
       }
    }
 
    // For any servos being automatically swept
    if(millis() - lastSweepUpdate > SERVO_MOVE_TIME) {
       lastSweepUpdate = millis();
-      for(int i = 0; i < NUM_SERVOS; i++) {
-         if(!sweepAngleRising && sweepAngle <= servoMinAngleArr[i]) {
+      int index;
+      for(int i = 0; i < NUM_SERVOS-1; i++) {
+            index = i;
+         if(level0SelectRow == 4) {   // row 4 means all servos driven with the "servo4" settings
+            index = 4;
+         }
+         if(!sweepAngleRising && sweepAngle <= servoMinAngleArr[index]) {
             sweepAngleRising = true;
-            sweepAngle = servoMinAngleArr[i];
+            sweepAngle = servoMinAngleArr[index];
          }
-         if(sweepAngleRising && sweepAngle >= servoMaxAngleArr[i]) {
+         if(sweepAngleRising && sweepAngle >= servoMaxAngleArr[index]) {
             sweepAngleRising = false;
-            sweepAngle = servoMaxAngleArr[i];
+            sweepAngle = servoMaxAngleArr[index];
          }
-         if(sweepAngleRising && sweepAngle < servoMaxAngleArr[i]) {
+         if(sweepAngleRising && sweepAngle < servoMaxAngleArr[index]) {
             sweepAngle += sweepDelta;
          }
-         if(!sweepAngleRising && sweepAngle > servoMinAngleArr[i]) {
+         if(!sweepAngleRising && sweepAngle > servoMinAngleArr[index]) {
             sweepAngle -= sweepDelta;
          }
-         if(servoModeArr[i] == SWP) {
-            servoInstance[i].write(sweepAngle);        // move the servo to the new position
-            servoCurAngleArr[i] = sweepAngle;
+         if(level0SelectRow == 4 && servoModeArr[4] == SWP) {   // row 4 means all servos driven with the "servo4" settings
+            servoInstance[i].write(sweepAngle);                 // move the indexed servo to the new position
+            servoCurAngleArr[4] = sweepAngle;
+         } else {
+            if(servoModeArr[i] == SWP) {
+               servoInstance[i].write(sweepAngle);        // move the indexed servo to the new position
+               servoCurAngleArr[i] = sweepAngle;
+            }
          }
       }
    }
