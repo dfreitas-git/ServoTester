@@ -12,7 +12,7 @@ dlf  1/3/2025
 
 
 ### Schematics
-![Alt text](./Schematic_ServoTester.pdf "Servo Tester Schematic")
+![Alt text](./Schematic_ServoTester.png "Servo Tester Schematic")
 
 
 ### Build Pictures
