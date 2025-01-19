@@ -35,7 +35,7 @@ enum rotary { LINE, MODE, CURA, MINA, MAXA };  // What the rotary knob is contro
 #define OLED_REFRESH_TIME  60    // Time (ms) between OLED screen updates
 boolean PRESSED = false;
 
-// U8G2 for PCD8544 with software SPI
+// U8G2/U8X8 for PCD8544 with software SPI (for Nokia 5110 display)
 U8X8_PCD8544_84X48_4W_SW_SPI u8x8(/* clock=*/ 12, /* data=*/ 11, /* cs=*/ 7, /* dc=*/ 8, /* reset=*/ 4);
 
 // Array to hold sprintf strings
