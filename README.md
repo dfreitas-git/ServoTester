@@ -16,6 +16,6 @@ dlf  1/3/2025
 
 
 ### Build Pictures
-![Alt text](./ServoTester2.jpg "Main Menu")
-![Alt text](./ServoTester1.jpg "Sub-Menu")
+![Alt text](./ServoTester1.jpg "Main Menu")
+![Alt text](./ServoTester2.jpg "Sub-Menu")
 ![Alt text](./ServoTester3.jpg "The Box")
