@@ -32,7 +32,7 @@ enum servoMode { POT, SWP };  // Either controlled with a potentiometer (POT) or
 enum rotary { LINE, MODE, CURA, MINA, MAXA };  // What the rotary knob is controlling
 
 // Constants
-#define OLED_REFRESH_TIME  60    // Time (ms) between OLED screen updates
+#define OLED_REFRESH_TIME  100  // Time (ms) between OLED screen updates
 boolean PRESSED = false;
 
 // U8G2/U8X8 for PCD8544 with software SPI (for Nokia 5110 display)
@@ -51,13 +51,16 @@ boolean buttonBeingHeld = false;  // Used to test if rotary button is being held
 #define PIN_IN2 3               // Interrupt pin
 #define ENC_SW  A1              // Rotary control switch
 rotary rotaryControl;           // Tells us what the rotary knob is currently being used for changing
+int encoderLastPosition = 0;
 int encoderCurPosition = 0;
+boolean displayNeedsUpdating = true;  // Flag so we don't have to clear/update the display so much (less flicker)
 
 // Servos
 #define NUM_SERVOS 5
 #define SERVO_SWEEP_SPEED_PIN A2       // So we can control how fast the servos sweep
 int servoPinArr[NUM_SERVOS] = {10,9,6,5,-1};  // Fifth entry is just a dummy placeholder for the ALL-SERVOS settings.  We don't assign a real servo to it.
 int servoCurAngleArr[NUM_SERVOS] = {90,90,90,90,90};        // Current angle setting for each servo
+int servoPrevAngleArr[NUM_SERVOS] = {90,90,90,90,90};        // Previous angle setting for each servo
 int servoMinAngleArr[NUM_SERVOS] = {0,0,0,0,-20};           // Minimum angle limit for each servo
 int servoMaxAngleArr[NUM_SERVOS] = {180,180,180,180,200};   // Maximum angle limit for each servo
 servoMode servoModeArr[NUM_SERVOS] = {POT,POT,POT,POT,POT}; // modes are POT or SWP  (potentiometer or sweep-auto)
@@ -124,6 +127,18 @@ void loop() {
 
    encoderCurPosition = encoder->getPosition();
 
+   // We only need to update the display if the rotary knob was used or if in the SWP mode and current angles are changing
+   if(encoderLastPosition != encoderCurPosition) {
+      displayNeedsUpdating = true;
+      encoderLastPosition = encoderCurPosition;
+   }
+   for(int i = 0; i < NUM_SERVOS; i++) {
+      if(servoPrevAngleArr[i] != servoCurAngleArr[i]) {
+         displayNeedsUpdating = true;
+         servoPrevAngleArr[i] = servoCurAngleArr[i];
+      }
+   }
+
    // Set the speed that the servos will sweep
     // Will be in ms as we'll use the raw 0-1023 reading with millis() later
    uint16_t servoSweepSpeed = analogRead(SERVO_SWEEP_SPEED_PIN); 
@@ -165,6 +180,8 @@ void loop() {
       while(checkSwitch(ENC_SW) == PRESSED) {
          delay(1);
       }
+      displayNeedsUpdating = true;
+
       // Top level menu
       if(menuLevel == 0) {
          level0SelectRow = encoderCurPosition;
@@ -218,8 +235,9 @@ void loop() {
    // ####################
    // Update the display
    // ####################
-   if(millis() - lastDisplayUpdate > OLED_REFRESH_TIME) {
+   if(millis() - lastDisplayUpdate > OLED_REFRESH_TIME && displayNeedsUpdating) {
       lastDisplayUpdate = millis();
+      displayNeedsUpdating = false;  // Only true if the rotary knob was moved
 
       if(menuLevel == 0) {
          u8x8.clearDisplay();
